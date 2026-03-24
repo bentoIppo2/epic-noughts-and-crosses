@@ -47,6 +47,9 @@ db.run(`
 
 let games = {};
 
+// Track who started the previous game for each game session
+let gameStartTracker = {};
+
 // ===== STATS TRACKING =====
 function updateStats(username, result) {
   db.run(
@@ -812,8 +815,15 @@ io.on('connection', (socket) => {
     if (socket.id !== game.host) return;
     if (!game.winner) return;
 
+    // Alternate who goes first
+    if (!gameStartTracker[gameId]) {
+      gameStartTracker[gameId] = 'X'; // First game starts with X
+    }
+    const nextTurn = gameStartTracker[gameId] === 'X' ? 'O' : 'X';
+    gameStartTracker[gameId] = nextTurn;
+
     game.board = Array(9).fill("");
-    game.turn = "X";
+    game.turn = nextTurn;
     game.winner = null;
 
     io.to(gameId).emit('update', game);
