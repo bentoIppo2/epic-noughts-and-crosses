@@ -20,7 +20,7 @@ app.use(session({
 }));
 
 // ===== DATABASE SETUP =====
-const db = new sqlite3.Database('./users.db', (err) => {
+const db = new sqlite3.Database('/data/users.db', (err) => {
   if (err) console.error('Database error:', err);
   else console.log('Connected to SQLite database');
 });
@@ -44,6 +44,55 @@ db.run(`
     FOREIGN KEY(username) REFERENCES users(username)
   )
 `);
+
+// ===== DATA MIGRATION =====
+function runMigration() {
+  db.get('SELECT COUNT(*) as count FROM users', [], (err, row) => {
+    if (err) {
+      console.error('Migration check failed:', err);
+      return;
+    }
+
+    if (row.count > 0) {
+      console.log('Migration skipped: users table already contains data');
+      return;
+    }
+
+    console.log('Users table is empty — restoring backup data...');
+
+    const migrationSQL = `
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+INSERT INTO users VALUES(1,'ben','$2b$10$6g7cH7Azseqz3KFTMmaaEOd1svJpiSxjhuF7nuu/ZIJhpWnGMomO2','2026-03-24 09:43:10');
+INSERT INTO users VALUES(2,'luca','$2b$10$PfeJNuAPbbitqPijvXbDSePEtFUWauSg1Goa1Xd8TFLjLl.nSHVm.','2026-03-24 09:47:33');
+INSERT INTO users VALUES(3,'Kmhb','$2b$10$xkWeDsf5DO/H69e8qVhYue8wi0hmcmmPYFDwwTftWBSQfl0UJMuW2','2026-03-24 10:04:59');
+INSERT INTO users VALUES(4,'settingstest','$2b$10$c9dGTYQIPn2MwNe.r118v.OuLAjhMykuzsMo.sckNvPKSSRviT/ne','2026-03-24 10:09:48');
+INSERT INTO users VALUES(5,'finaltest','$2b$10$YHLWGje9s2ySpdVK3pJ5ie1iy8F6NqGkbxQt9nPxps5e2hMbojOnW','2026-03-24 10:10:05');
+INSERT INTO users VALUES(7,'themetest','$2b$10$BkHoVcrFPziOnz3146BqGuRN6JmRkT14hNqyR6eOiQKgQgyFsP2M2','2026-03-24 10:14:58');
+INSERT INTO stats VALUES(1,'ben',5,0,1);
+INSERT INTO stats VALUES(2,'luca',0,0,4);
+INSERT INTO stats VALUES(6,'Kmhb',1,0,1);
+DELETE FROM sqlite_sequence;
+INSERT INTO sqlite_sequence VALUES('users',7);
+INSERT INTO sqlite_sequence VALUES('stats',12);
+COMMIT;
+PRAGMA foreign_keys=ON;
+    `;
+
+    db.exec(migrationSQL, (execErr) => {
+      if (execErr) {
+        console.error('Migration failed:', execErr);
+      } else {
+        console.log('Migration successful: user accounts and stats restored');
+      }
+    });
+  });
+}
+
+// Run migration after tables are created (serialize ensures ordering)
+db.serialize(() => {
+  runMigration();
+});
 
 let games = {};
 
