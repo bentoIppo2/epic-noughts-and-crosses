@@ -1,0 +1,352 @@
+/* DEFAULT VARIABLES (Blue Ocean) */
+:root {
+  --primary-gradient: linear-gradient(135deg, #1e3c72, #2a5298);
+  --primary-color: #74c0fc;
+  --secondary-color: #b3d9ff;
+  --accent-color: #51cf66;
+  --accent-hover: #40c057;
+  --danger-color: #ff6b6b;
+  --danger-hover: #ee5a52;
+  --card-bg: rgba(255,255,255,0.1);
+  --button-bg: white;
+}
+
+/* BLUE OCEAN THEME (Default) */
+:root.theme-blue {
+  --primary-gradient: linear-gradient(135deg, #1e3c72, #2a5298);
+  --primary-color: #74c0fc;
+  --secondary-color: #b3d9ff;
+  --accent-color: #51cf66;
+  --accent-hover: #40c057;
+  --danger-color: #ff6b6b;
+  --danger-hover: #ee5a52;
+  --card-bg: rgba(255,255,255,0.1);
+  --button-bg: white;
+}
+
+/* SUNSET ORANGE THEME */
+:root.theme-sunset {
+  --primary-gradient: linear-gradient(135deg, #d63031, #ff7675);
+  --primary-color: #ffb366;
+  --secondary-color: #ffd699;
+  --accent-color: #ffa94d;
+  --accent-hover: #ff8c42;
+  --danger-color: #d63031;
+  --danger-hover: #b82e2e;
+  --card-bg: rgba(255,140,66,0.15);
+  --button-bg: #ffd699;
+}
+
+/* FOREST GREEN THEME */
+:root.theme-forest {
+  --primary-gradient: linear-gradient(135deg, #27503d, #3d6847);
+  --primary-color: #69db7c;
+  --secondary-color: #8ce99a;
+  --accent-color: #51cf66;
+  --accent-hover: #40c057;
+  --danger-color: #ff8787;
+  --danger-hover: #ff6b6b;
+  --card-bg: rgba(81,207,102,0.15);
+  --button-bg: #d3f9d8;
+}
+
+/* MY LITTLE PONY THEME */
+:root.theme-mlp {
+  --primary-gradient: linear-gradient(135deg, #d946ef, #f472b6);
+  --primary-color: #f0abfc;
+  --secondary-color: #fbcfe8;
+  --accent-color: #c084fc;
+  --accent-hover: #a855f7;
+  --danger-color: #f87171;
+  --danger-hover: #dc2626;
+  --card-bg: rgba(240,171,252,0.15);
+  --button-bg: #fbcfe8;
+}
+
+:root.theme-mlp body {
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(241,113,254,0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(196,132,252,0.3) 0%, transparent 50%),
+    linear-gradient(135deg, #d946ef, #f472b6) !important;
+  position: relative;
+}
+
+:root.theme-mlp body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 15% 80%, rgba(255,255,255,0.3) 0%, transparent 40%),
+    radial-gradient(circle at 85% 20%, rgba(255,255,255,0.2) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* NARUTO THEME */
+:root.theme-naruto {
+  --primary-gradient: linear-gradient(135deg, #1e1b4b, #f97316);
+  --primary-color: #fed7aa;
+  --secondary-color: #fecaca;
+  --accent-color: #fb923c;
+  --accent-hover: #f97316;
+  --danger-color: #dc2626;
+  --danger-hover: #991b1b;
+  --card-bg: rgba(249,115,22,0.15);
+  --button-bg: #fecdd3;
+}
+
+:root.theme-naruto body {
+  background: 
+    linear-gradient(135deg, #1e1b4b 0%, #2d1b69 50%, #f97316 100%) !important;
+  position: relative;
+}
+
+:root.theme-naruto body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 30% 40%, rgba(249,115,22,0.2) 0%, transparent 50%),
+    radial-gradient(circle at 70% 60%, rgba(30,27,75,0.3) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ONE PIECE THEME */
+:root.theme-onepiece {
+  --primary-gradient: linear-gradient(135deg, #1e3a8a, #fbbf24);
+  --primary-color: #fcd34d;
+  --secondary-color: #fef3c7;
+  --accent-color: #f59e0b;
+  --accent-hover: #d97706;
+  --danger-color: #ef4444;
+  --danger-hover: #dc2626;
+  --card-bg: rgba(252,211,77,0.15);
+  --button-bg: #fef3c7;
+}
+
+:root.theme-onepiece body {
+  background:
+    repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(30,58,138,0.1) 35px, rgba(30,58,138,0.1) 70px),
+    linear-gradient(135deg, #1e3a8a 0%, #0369a1 50%, #fbbf24 100%) !important;
+  position: relative;
+}
+
+:root.theme-onepiece body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(251,191,36,0.3) 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(30,58,138,0.2) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* THOMAS THE TANK ENGINE THEME */
+:root.theme-thomas {
+  --primary-gradient: linear-gradient(135deg, #1e40af, #dc2626);
+  --primary-color: #60a5fa;
+  --secondary-color: #fecaca;
+  --accent-color: #fbbf24;
+  --accent-hover: #f59e0b;
+  --danger-color: #dc2626;
+  --danger-hover: #991b1b;
+  --card-bg: rgba(96,165,250,0.15);
+  --button-bg: #fecdd3;
+}
+
+:root.theme-thomas body {
+  background:
+    repeating-linear-gradient(0deg, 
+      rgba(0,0,0,0.1) 0px, 
+      rgba(0,0,0,0.1) 2px, 
+      transparent 2px, 
+      transparent 20px),
+    repeating-linear-gradient(90deg,
+      rgba(0,0,0,0.1) 0px,
+      rgba(0,0,0,0.1) 2px,
+      transparent 2px,
+      transparent 20px),
+    linear-gradient(135deg, #1e40af 0%, #7c3aed 50%, #dc2626 100%) !important;
+  position: relative;
+}
+
+:root.theme-thomas body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 10% 50%, rgba(251,191,36,0.25) 0%, transparent 40%),
+    radial-gradient(circle at 90% 50%, rgba(220,38,38,0.2) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Apply theme to body */
+body {
+  background: var(--primary-gradient) !important;
+}
+
+/* Apply theme to containers */
+.container {
+  background: var(--card-bg) !important;
+  position: relative;
+  z-index: 1;
+}
+
+.wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+.game-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* Apply theme to cards */
+.card {
+  background: var(--card-bg) !important;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar {
+  position: relative;
+  z-index: 1;
+}
+
+/* Apply theme to section titles */
+.section-title {
+  color: var(--primary-color) !important;
+}
+
+/* Apply theme to info labels */
+.info-label {
+  color: var(--secondary-color) !important;
+}
+
+/* Apply theme to buttons */
+button, input[type="submit"] {
+  background: var(--accent-color) !important;
+  color: white !important;
+}
+
+button:hover, input[type="submit"]:hover {
+  background: var(--accent-hover) !important;
+}
+
+/* Apply theme to danger buttons */
+.btn-danger {
+  background: var(--danger-color) !important;
+}
+
+.btn-danger:hover {
+  background: var(--danger-hover) !important;
+}
+
+/* Apply theme to links */
+.back-link a {
+  color: var(--primary-color) !important;
+}
+
+/* Apply theme to select dropdowns */
+select {
+  background: white !important;
+  color: #333 !important;
+  border: 2px solid var(--primary-color) !important;
+}
+
+/* Apply theme to sidebar in game page */
+.sidebar {
+  background: var(--card-bg) !important;
+}
+
+.sidebar h2 {
+  color: var(--primary-color) !important;
+}
+
+.leaderboard-table th {
+  background: rgba(255,255,255,0.1) !important;
+  color: var(--primary-color) !important;
+}
+
+/* Apply theme to game grid */
+.grid button {
+  background: var(--button-bg) !important;
+  color: #333 !important;
+}
+
+.grid button:hover:not(:disabled) {
+  background: var(--primary-color) !important;
+  color: white !important;
+}
+
+/* Apply theme to restart and menu buttons */
+#restart {
+  background: var(--danger-color) !important;
+}
+
+#restart:hover {
+  background: var(--danger-hover) !important;
+}
+
+#mainMenuBtn {
+  background: var(--primary-color) !important;
+}
+
+#mainMenuBtn:hover {
+  background: var(--accent-color) !important;
+}
+
+/* Apply theme to success and error messages */
+.success {
+  color: var(--accent-color) !important;
+  background: rgba(81,207,102,0.2) !important;
+}
+
+.error {
+  color: var(--danger-color) !important;
+  background: rgba(255,107,107,0.2) !important;
+}
+
+/* Additional styling for better theme preservation */
+input, textarea, select {
+  border: none !important;
+  background: white !important;
+  color: #333 !important;
+}
+
+h1, h2 {
+  color: white !important;
+}
+
+label {
+  color: var(--secondary-color) !important;
+}
+
+/* Game embed styles for theme */
+#gameIdDisplay {
+  color: var(--primary-color) !important;
+}
+
+#status {
+  color: var(--primary-color) !important;
+}
+
+#players {
+  color: var(--secondary-color) !important;
+}

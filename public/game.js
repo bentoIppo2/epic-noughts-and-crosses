@@ -3,15 +3,24 @@ const socket = io();
 const grid = document.getElementById("grid");
 const statusText = document.getElementById("status");
 const restartBtn = document.getElementById("restart");
-const playersText = document.getElementById("players");
 const gameIdDisplay = document.getElementById("gameIdDisplay");
 const loserOverlay = document.getElementById("loserOverlay");
+const playerStatusDiv = document.getElementById("playerStatus");
+const hostControlsDiv = document.getElementById("hostControls");
+const spectatorModeDiv = document.getElementById("spectatorMode");
+const spectatorListDiv = document.getElementById("spectatorList");
 
 const gameId = window.location.pathname.split("/").pop();
 const username = window.loggedInUser;
 
 let playerSymbol = null;
 let isHost = false;
+let isSpectator = false;
+let game = {};
+
+// Initialize UI elements
+hostControlsDiv.style.display = 'none';
+spectatorModeDiv.style.display = 'none';
 
 // display game ID
 gameIdDisplay.innerText = `Game ID: ${gameId}`;
@@ -27,19 +36,86 @@ const winCombos = [
 for (let i = 0; i < 9; i++) {
   const btn = document.createElement("button");
   btn.onclick = () => {
-    socket.emit('move', { gameId, index: i });
+    if (!isSpectator) {
+      socket.emit('move', { gameId, index: i });
+    }
   };
   grid.appendChild(btn);
 }
 
+// Check for spectate mode from URL query params
+const urlParams = new URLSearchParams(window.location.search);
+const isSpectatingUrl = urlParams.has('spectate');
+
 // join
-socket.emit('join', { gameId, username });
+async function joinGame() {
+  try {
+    // Fetch game info to check if it's private
+    const response = await fetch(`/api/game-info/${gameId}`);
+    const gameInfo = response.ok ? await response.json() : null;
+
+    if (gameInfo && !gameInfo.isPublic && gameInfo.hasPassword) {
+      const password = prompt('This is a private game. Enter the password:');
+      if (password === null) {
+        window.location.href = '/';
+        return;
+      }
+      socket.emit('join', { gameId, username, password, isSpectating: isSpectatingUrl });
+    } else if (gameInfo && !gameInfo.isPublic && !gameInfo.hasPassword) {
+      socket.emit('join', { gameId, username, password: '', isSpectating: isSpectatingUrl });
+    } else {
+      socket.emit('join', { gameId, username, isSpectating: isSpectatingUrl });
+    }
+  } catch (err) {
+    console.error('Error fetching game info:', err);
+    socket.emit('join', { gameId, username, isSpectating: isSpectatingUrl });
+  }
+}
+
+joinGame();
 
 socket.on('player', (data) => {
   playerSymbol = data.symbol;
   isHost = data.isHost;
+  isSpectator = false;
 
   statusText.innerText = `You are ${data.name} (${data.symbol})`;
+  spectatorModeDiv.style.display = 'none';
+  spectatorModeDiv.innerHTML = '';
+});
+
+socket.on('spectator', (data) => {
+  isSpectator = true;
+  playerSymbol = null;
+  statusText.innerText = 'You are watching as a spectator';
+  spectatorModeDiv.style.display = 'block';
+  spectatorModeDiv.innerHTML = '<strong>👁️ Spectator Mode</strong> - You are watching this game as a spectator';
+  
+  // Disable grid clicking for spectators
+  document.querySelectorAll('.grid button').forEach(btn => {
+    btn.style.cursor = 'default';
+  });
+});
+
+socket.on('playerDisconnected', (data) => {
+  console.log(data.name + ' has disconnected');
+  if (isHost && !isSpectator) {
+    showHostControls();
+  }
+});
+
+socket.on('kicked', (data) => {
+  alert('You were kicked from the game: ' + data.reason);
+  window.location.href = '/';
+});
+
+socket.on('joinError', (data) => {
+  alert('Error joining game: ' + data.error);
+  window.location.href = '/';
+});
+
+socket.on('spectatorLeft', (data) => {
+  console.log(data.name + ' left as spectator');
 });
 
 function getWinningLine(board) {
@@ -126,8 +202,37 @@ function spawnDeathEffect(element) {
 }
 
 // update
-socket.on('update', (game) => {
+socket.on('update', (gameData) => {
+  game = gameData; // Store game state
   const buttons = document.querySelectorAll(".grid button");
+
+  // Display player status with connection indicators
+  let playerStatusHTML = '';
+  if (gameData.players.length > 0) {
+    playerStatusHTML = '<div class="player-card">';
+    gameData.players.forEach(player => {
+      const isConnected = player.connected;
+      const statusClass = isConnected ? 'status-online' : 'status-offline';
+      const statusText = isConnected ? 'Online' : 'Offline';
+      playerStatusHTML += `
+        <div><span class="status-indicator ${statusClass}"></span>${player.name} (${player.symbol}) - ${statusText}</div>
+      `;
+    });
+    playerStatusHTML += '</div>';
+  }
+  playerStatusDiv.innerHTML = playerStatusHTML;
+
+  // Display spectators
+  if (gameData.spectators && gameData.spectators.length > 0) {
+    spectatorListDiv.innerHTML = `<div class="spectator-list"><strong>Spectators (${gameData.spectators.length}):</strong> ${gameData.spectators.map(s => s.name).join(', ')}</div>`;
+  } else {
+    spectatorListDiv.innerHTML = '';
+  }
+
+  // Show host controls if this player is host and a player is offline
+  if (isHost && gameData.players.some(p => !p.connected)) {
+    showHostControls();
+  }
 
   // Hide loser overlay on any update (restart, new game, etc.)
   loserOverlay.style.display = "none";
@@ -138,43 +243,53 @@ socket.on('update', (game) => {
     btn.classList.remove("lose");
   });
 
-  if (game.players.length === 1) {
-    playersText.innerText = `👤 ${game.players[0].name} (X) waiting for opponent...`;
-  } else if (game.players.length === 2) {
-    playersText.innerText = `👤 ${game.players[0].name} (X) vs ${game.players[1].name} (O)`;
-  }
-
   buttons.forEach(btn => {
     btn.disabled = false;
+    btn.style.backgroundColor = "white";
     btn.style.background = "white";
+    btn.style.color = "black";
     btn.style.transform = "scale(1)";
   });
 
-  game.board.forEach((val, i) => {
+  gameData.board.forEach((val, i) => {
     buttons[i].innerText = val;
 
-    if (val === "X") buttons[i].style.background = "#74c0fc";
-    if (val === "O") buttons[i].style.background = "#ff8787";
+    if (val === "X") {
+      buttons[i].style.backgroundColor = "#74c0fc";
+      buttons[i].style.background = "#74c0fc";
+      buttons[i].style.color = "white";
+      buttons[i].style.fontWeight = "bold";
+    } else if (val === "O") {
+      buttons[i].style.backgroundColor = "#ff8787";
+      buttons[i].style.background = "#ff8787";
+      buttons[i].style.color = "white";
+      buttons[i].style.fontWeight = "bold";
+    }
   });
 
-  if (game.players.length < 2) {
+  if (gameData.players.length < 2) {
     statusText.innerText = "Waiting for opponent...";
     buttons.forEach(btn => btn.disabled = true);
     return;
   }
 
-  if (game.winner === "draw") {
+  if (gameData.winner === "draw") {
     statusText.innerText = "🤝 Draw!";
     buttons.forEach(btn => btn.disabled = true);
     return;
   }
 
-  if (game.winner) {
-    const isWinner = game.winner === playerSymbol;
+  if (gameData.winner) {
+    const isWinner = gameData.winner === playerSymbol;
 
-    statusText.innerText = isWinner ? "🏆 YOU WIN" : "💀 YOU LOST";
+    if (isSpectator) {
+      const winnerName = gameData.players.find(p => p.symbol === gameData.winner)?.name || 'Unknown';
+      statusText.innerText = `🏆 ${winnerName} wins!`;
+    } else {
+      statusText.innerText = isWinner ? "🏆 YOU WIN" :  "💀 YOU LOST";
+    }
 
-    const line = getWinningLine(game.board);
+    const line = getWinningLine(gameData.board);
 
     if (line) {
       line.forEach(i => {
@@ -184,12 +299,12 @@ socket.on('update', (game) => {
       });
     }
 
-    if (!isWinner) {
+    if (!isWinner && !isSpectator) {
       document.body.classList.add("loser-mode");
       loserOverlay.style.display = "flex";
 
       buttons.forEach((btn, i) => {
-        if (!line.includes(i) && game.board[i] !== "") {
+        if (!line.includes(i) && gameData.board[i] !== "") {
           btn.classList.add("lose");
           spawnDeathEffect(btn);
         }
@@ -202,7 +317,7 @@ socket.on('update', (game) => {
 
     buttons.forEach(btn => btn.disabled = true);
   } else {
-    statusText.innerText = `Turn: ${game.turn}`;
+    statusText.innerText = `Turn: ${gameData.turn}`;
   }
 
   // ✅ HOST CAN RESTART REGARDLESS OF WIN/LOSS
@@ -211,7 +326,43 @@ socket.on('update', (game) => {
   } else {
     restartBtn.style.display = "none";
   }
+
+  // Show main menu button for all players when game ends
+  const mainMenuBtn = document.getElementById('mainMenuBtn');
+  if (gameData.result || gameData.status === 'complete' || gameData.status === 'draw' || gameData.winner) {
+    mainMenuBtn.style.display = "block";
+  }
 });
+
+// ===== SHOW HOST CONTROLS =====
+function showHostControls() {
+  if (!isHost || isSpectator || !game.players) return;
+
+  let controlsHTML = '<div class="host-controls">⚙️ <strong>Host Controls:</strong>';
+  let hasDisconnected = false;
+  
+  // Add kick buttons for each opponent
+  game.players.forEach(player => {
+    if (player.name !== username && !player.connected) {
+      hasDisconnected = true;
+      controlsHTML += `<button class="btn-kick" onclick="kickPlayer('${player.name}')">👢 Kick ${player.name}</button>`;
+    }
+  });
+
+  if (hasDisconnected) {
+    controlsHTML += '</div>';
+    hostControlsDiv.innerHTML = controlsHTML;
+    hostControlsDiv.style.display = 'block';
+  } else {
+    hostControlsDiv.style.display = 'none';
+  }
+}
+
+function kickPlayer(playerName) {
+  if (confirm(`Kick ${playerName} from the game?`)) {
+    socket.emit('kick', { gameId, playerName });
+  }
+}
 
 restartBtn.onclick = () => {
   socket.emit('restart', gameId);

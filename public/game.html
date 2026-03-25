@@ -257,6 +257,72 @@
     background: #339af0;
   }
 
+  .status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+
+  .status-online {
+    background: #51cf66;
+    box-shadow: 0 0 10px #51cf66;
+  }
+
+  .status-offline {
+    background: #ff6b6b;
+    box-shadow: 0 0 10px #ff6b6b;
+  }
+
+  .player-card {
+    background: rgba(255,255,255,0.15);
+    padding: 12px;
+    border-radius: 8px;
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .host-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 15px 0;
+  }
+
+  .btn-kick {
+    background: #ff6b6b;
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+  }
+
+  .btn-kick:hover {
+    background: #ee5a52;
+  }
+
+  .spectator-list {
+    background: rgba(255,255,255,0.1);
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 15px;
+    font-size: 0.9em;
+  }
+
+  #spectatorMode {
+    background: rgba(100,200,255,0.3);
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    border: 2px dashed #4dabf7;
+  }
+
   .card {
     background: rgba(255,255,255,0.1);
     padding: 25px;
@@ -264,6 +330,7 @@
     display: inline-block;
   }
 </style>
+<link rel="stylesheet" href="/themes.css">
 </head>
 <body>
 
@@ -275,10 +342,14 @@
   <div class="card">
     <h1>Online Game</h1>
     <div id="gameIdDisplay"></div>
-    <div id="players"></div>
+    <div id="playerStatus"></div>
+    <div id="spectatorMode"></div>
+    <div id="hostControls" style="display:none;"></div>
     <h2 id="status"></h2>
 
     <div class="grid" id="grid"></div>
+
+    <div id="spectatorList"></div>
 
     <button id="restart" style="display:none;">Restart Game</button>
     <button id="mainMenuBtn">Main Menu</button>
@@ -313,6 +384,7 @@
   const originalWinListener = window.addEventListener ? window.addEventListener('load', () => {}) : null;
   // We'll modify game.js to trigger the main menu button display
 </script>
+<script src="/theme-loader.js"></script>
 
 </body>
 </html>

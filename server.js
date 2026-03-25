@@ -20,9 +20,11 @@ app.use(session({
 }));
 
 // ===== DATABASE SETUP =====
-const db = new sqlite3.Database('/data/users.db', (err) => {
+const fs = require('fs');
+const dbPath = fs.existsSync('/data') ? '/data/users.db' : './users.db';
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) console.error('Database error:', err);
-  else console.log('Connected to SQLite database');
+  else console.log('Connected to SQLite database at:', dbPath);
 });
 
 db.run(`
@@ -30,6 +32,7 @@ db.run(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
+    theme TEXT DEFAULT 'blue',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
@@ -63,12 +66,12 @@ function runMigration() {
     const migrationSQL = `
 PRAGMA foreign_keys=OFF;
 BEGIN TRANSACTION;
-INSERT INTO users VALUES(1,'ben','$2b$10$6g7cH7Azseqz3KFTMmaaEOd1svJpiSxjhuF7nuu/ZIJhpWnGMomO2','2026-03-24 09:43:10');
-INSERT INTO users VALUES(2,'luca','$2b$10$PfeJNuAPbbitqPijvXbDSePEtFUWauSg1Goa1Xd8TFLjLl.nSHVm.','2026-03-24 09:47:33');
-INSERT INTO users VALUES(3,'Kmhb','$2b$10$xkWeDsf5DO/H69e8qVhYue8wi0hmcmmPYFDwwTftWBSQfl0UJMuW2','2026-03-24 10:04:59');
-INSERT INTO users VALUES(4,'settingstest','$2b$10$c9dGTYQIPn2MwNe.r118v.OuLAjhMykuzsMo.sckNvPKSSRviT/ne','2026-03-24 10:09:48');
-INSERT INTO users VALUES(5,'finaltest','$2b$10$YHLWGje9s2ySpdVK3pJ5ie1iy8F6NqGkbxQt9nPxps5e2hMbojOnW','2026-03-24 10:10:05');
-INSERT INTO users VALUES(7,'themetest','$2b$10$BkHoVcrFPziOnz3146BqGuRN6JmRkT14hNqyR6eOiQKgQgyFsP2M2','2026-03-24 10:14:58');
+INSERT INTO users VALUES(1,'ben','$2b$10$6g7cH7Azseqz3KFTMmaaEOd1svJpiSxjhuF7nuu/ZIJhpWnGMomO2','blue','2026-03-24 09:43:10');
+INSERT INTO users VALUES(2,'luca','$2b$10$PfeJNuAPbbitqPijvXbDSePEtFUWauSg1Goa1Xd8TFLjLl.nSHVm.','blue','2026-03-24 09:47:33');
+INSERT INTO users VALUES(3,'Kmhb','$2b$10$xkWeDsf5DO/H69e8qVhYue8wi0hmcmmPYFDwwTftWBSQfl0UJMuW2','blue','2026-03-24 10:04:59');
+INSERT INTO users VALUES(4,'settingstest','$2b$10$c9dGTYQIPn2MwNe.r118v.OuLAjhMykuzsMo.sckNvPKSSRviT/ne','blue','2026-03-24 10:09:48');
+INSERT INTO users VALUES(5,'finaltest','$2b$10$YHLWGje9s2ySpdVK3pJ5ie1iy8F6NqGkbxQt9nPxps5e2hMbojOnW','blue','2026-03-24 10:10:05');
+INSERT INTO users VALUES(7,'themetest','$2b$10$BkHoVcrFPziOnz3146BqGuRN6JmRkT14hNqyR6eOiQKgQgyFsP2M2','blue','2026-03-24 10:14:58');
 INSERT INTO stats VALUES(1,'ben',5,0,1);
 INSERT INTO stats VALUES(2,'luca',0,0,4);
 INSERT INTO stats VALUES(6,'Kmhb',1,0,1);
@@ -89,15 +92,37 @@ PRAGMA foreign_keys=ON;
   });
 }
 
+// Ensure theme column exists (for existing databases)
+db.run('PRAGMA table_info(users)', [], (err, info) => {
+  db.all('PRAGMA table_info(users)', [], (err, columns) => {
+    if (columns && !columns.find(c => c.name === 'theme')) {
+      db.run('ALTER TABLE users ADD COLUMN theme TEXT DEFAULT "blue"', (err) => {
+        if (err) console.error('Could not add theme column:', err);
+        else console.log('Theme column added to users table');
+      });
+    }
+  });
+});
+
 // Run migration after tables are created (serialize ensures ordering)
 db.serialize(() => {
   runMigration();
 });
 
 let games = {};
-
-// Track who started the previous game for each game session
+let playerTokens = {}; // Map socket ID to player token for reconnect
 let gameStartTracker = {};
+
+// ===== CLEAN UP OLD GAMES =====
+setInterval(() => {
+  const now = Date.now();
+  for (const [gameId, game] of Object.entries(games)) {
+    // Remove games without players for 30 minutes
+    if (game.players.length === 0 && (now - game.createdAt) > 30 * 60 * 1000) {
+      delete games[gameId];
+    }
+  }
+}, 10 * 60 * 1000); // Check every 10 minutes
 
 // ===== STATS TRACKING =====
 function updateStats(username, result) {
@@ -150,6 +175,7 @@ app.get('/register', (req, res) => {
         a { color: #74c0fc; text-decoration: none; }
         a:hover { text-decoration: underline; }
       </style>
+      <link rel="stylesheet" href="/themes.css">
     </head>
     <body>
       <div class="container">
@@ -229,6 +255,7 @@ app.get('/login', (req, res) => {
         a { color: #74c0fc; text-decoration: none; }
         a:hover { text-decoration: underline; }
       </style>
+      <link rel="stylesheet" href="/themes.css">
     </head>
     <body>
       <div class="container">
@@ -333,6 +360,7 @@ app.get('/', (req, res) => {
           .sidebar { width: 100%; }
         }
       </style>
+      <link rel="stylesheet" href="/themes.css">
     </head>
     <body>
       <div class="wrapper">
@@ -343,7 +371,8 @@ app.get('/', (req, res) => {
           <div class="section">
             <div class="section-title">Create New Game</div>
             <div class="button-group">
-              <a href="/create" class="btn-create">Create Game</a>
+              <a href="/create" class="btn-create">Create Public Game</a>
+              <button class="btn-create" onclick="createPrivateGame()">Create Private Game</button>
             </div>
           </div>
 
@@ -355,7 +384,7 @@ app.get('/', (req, res) => {
             </div>
             <div id="errorMsg" class="error-msg"></div>
             <div style="margin-top: 15px;">
-              <a href="/games" class="btn-join">Browse Games</a>
+              <a href="/lobby" class="btn-join">📋 Game Lobby</a>
             </div>
           </div>
 
@@ -395,6 +424,23 @@ app.get('/', (req, res) => {
           
           errorMsg.innerText = '';
           window.location.href = '/game/' + gameId;
+        }
+
+        function createPrivateGame() {
+          const password = prompt('Enter a password for your private game (optional):');
+          if (password === null) return;
+
+          fetch('/create-private', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'password=' + encodeURIComponent(password || '')
+          })
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              window.location.href = '/game/' + data.gameId;
+            }
+          });
         }
 
         document.getElementById('gameIdInput').addEventListener('keypress', function(e) {
@@ -447,6 +493,7 @@ app.get('/', (req, res) => {
           loadLeaderboard();
         });
       </script>
+      <script src="/theme-loader.js"></script>
     </body>
     </html>
   `);
@@ -462,11 +509,13 @@ app.get('/settings', (req, res) => {
   const success = req.query.success || '';
 
   db.get('SELECT * FROM stats WHERE username = ?', [req.session.username], (err, stats) => {
-    const wins = stats?.wins || 0;
-    const draws = stats?.draws || 0;
-    const losses = stats?.losses || 0;
-    const total = wins + draws + losses;
-    const winRate = total > 0 ? ((wins / total) * 100).toFixed(1) : 0;
+    db.get('SELECT theme FROM users WHERE username = ?', [req.session.username], (err, user) => {
+      const wins = stats?.wins || 0;
+      const draws = stats?.draws || 0;
+      const losses = stats?.losses || 0;
+      const total = wins + draws + losses;
+      const winRate = total > 0 ? ((wins / total) * 100).toFixed(1) : 0;
+      const currentTheme = user?.theme || 'blue';
 
     res.send(`
       <!DOCTYPE html>
@@ -494,6 +543,7 @@ app.get('/settings', (req, res) => {
           .error { color: #ff6b6b; background: rgba(255,107,107,0.2); padding: 12px; border-radius: 5px; margin-bottom: 15px; }
           .success { color: #51cf66; background: rgba(81,207,102,0.2); padding: 12px; border-radius: 5px; margin-bottom: 15px; }
         </style>
+        <link rel="stylesheet" href="/themes.css">
       </head>
       <body>
         <div class="container">
@@ -531,6 +581,26 @@ app.get('/settings', (req, res) => {
             </div>
           </div>
 
+          <!-- Theme Selection Section -->
+          <div class="section">
+            <div class="section-title">🎨 Theme</div>
+            <form method="POST" action="/settings/theme">
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 10px; color: #b3d9ff;">Choose your theme:</label>
+                <select name="theme" style="width: 100%; padding: 10px; border: none; border-radius: 5px; font-size: 1em;">
+                  <option value="blue" ${currentTheme === 'blue' ? 'selected' : ''}>Blue Ocean</option>
+                  <option value="sunset" ${currentTheme === 'sunset' ? 'selected' : ''}>Sunset Orange</option>
+                  <option value="forest" ${currentTheme === 'forest' ? 'selected' : ''}>Forest Green</option>
+                  <option value="mlp" ${currentTheme === 'mlp' ? 'selected' : ''}>My Little Pony</option>
+                  <option value="naruto" ${currentTheme === 'naruto' ? 'selected' : ''}>Naruto</option>
+                  <option value="onepiece" ${currentTheme === 'onepiece' ? 'selected' : ''}>One Piece</option>
+                  <option value="thomas" ${currentTheme === 'thomas' ? 'selected' : ''}>Thomas the Tank Engine</option>
+                </select>
+              </div>
+              <button type="submit">Apply Theme</button>
+            </form>
+          </div>
+
           <!-- Change Password Section -->
           <div class="section">
             <div class="section-title">Change Password</div>
@@ -555,9 +625,11 @@ app.get('/settings', (req, res) => {
             <a href="/">← Back to Home</a>
           </div>
         </div>
+        <script src="/theme-loader.js"></script>
       </body>
       </html>
     `);
+    });
   });
 });
 
@@ -615,6 +687,41 @@ app.post('/settings', async (req, res) => {
   });
 });
 
+// ===== UPDATE THEME =====
+app.post('/settings/theme', (req, res) => {
+  if (!req.session.username) {
+    return res.redirect('/login');
+  }
+
+  const { theme } = req.body;
+  const validThemes = ['blue', 'sunset', 'forest', 'mlp', 'naruto', 'onepiece', 'thomas'];
+
+  if (!validThemes.includes(theme)) {
+    return res.redirect(`/settings?error=${encodeURIComponent('Invalid theme')}`);
+  }
+
+  db.run('UPDATE users SET theme = ? WHERE username = ?', [theme, req.session.username], (err) => {
+    if (err) {
+      return res.redirect(`/settings?error=${encodeURIComponent('Failed to update theme')}`);
+    }
+    res.redirect('/settings?success=' + encodeURIComponent('Theme updated successfully'));
+  });
+});
+
+// ===== GET USER THEME =====
+app.get('/api/theme', (req, res) => {
+  if (!req.session.username) {
+    return res.json({ theme: 'blue' });
+  }
+
+  db.get('SELECT theme FROM users WHERE username = ?', [req.session.username], (err, user) => {
+    if (err || !user) {
+      return res.json({ theme: 'blue' });
+    }
+    res.json({ theme: user.theme || 'blue' });
+  });
+});
+
 // ===== DELETE ACCOUNT =====
 app.post('/settings/delete', (req, res) => {
   if (!req.session.username) {
@@ -664,6 +771,21 @@ app.get('/api/leaderboard', (req, res) => {
       res.json(rows || []);
     }
   );
+});
+
+// ===== GAME INFO API =====
+app.get('/api/game-info/:gameId', (req, res) => {
+  const { gameId } = req.params;
+  const game = games[gameId];
+  
+  if (!game) {
+    return res.status(404).json({ error: 'Game not found' });
+  }
+
+  res.json({
+    isPublic: game.isPublic,
+    hasPassword: !!game.password
+  });
 });
 
 // ===== GAMES LIST PAGE =====
@@ -746,6 +868,10 @@ app.get('/games', (req, res) => {
 
 // ===== CREATE GAME =====
 app.get('/create', (req, res) => {
+  if (!req.session.username) {
+    return res.redirect('/login');
+  }
+
   const id = Math.random().toString(36).substr(2, 5);
 
   games[id] = {
@@ -753,10 +879,140 @@ app.get('/create', (req, res) => {
     players: [],
     turn: "X",
     winner: null,
-    host: null
+    host: null,
+    isPublic: true,
+    password: null,
+    spectators: [],
+    createdAt: Date.now(),
+    createdBy: req.session.username
   };
 
   res.redirect(`/game/${id}`);
+});
+
+// ===== CREATE PRIVATE GAME =====
+app.post('/create-private', (req, res) => {
+  if (!req.session.username) {
+    return res.redirect('/login');
+  }
+
+  const id = Math.random().toString(36).substr(2, 5);
+  const { password } = req.body;
+
+  games[id] = {
+    board: Array(9).fill(""),
+    players: [],
+    turn: "X",
+    winner: null,
+    host: null,
+    isPublic: false,
+    password: password || null,
+    spectators: [],
+    createdAt: Date.now(),
+    createdBy: req.session.username
+  };
+
+  res.json({ gameId: id, success: true });
+});
+
+// ===== LOBBY PAGE =====
+app.get('/lobby', (req, res) => {
+  if (!req.session.username) {
+    return res.redirect('/login');
+  }
+
+  const allGames = Object.entries(games)
+    .filter(([_, game]) => game.players.length < 2 || game.players.length >= 2)
+    .map(([id, game]) => ({
+      id,
+      playerCount: game.players.length,
+      createdBy: game.createdBy,
+      turn: game.turn,
+      winner: game.winner,
+      isPublic: game.isPublic,
+      hasPassword: !!game.password
+    }));
+
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Game Lobby</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial; background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 30px; font-size: 2.5em; }
+        .header-buttons { display: flex; gap: 15px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
+        a, button { padding: 12px 30px; text-decoration: none; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1em; font-weight: bold; transition: 0.2s; }
+        .btn-home { background: #4dabf7; color: white; }
+        .btn-home:hover { background: #339af0; }
+        .games-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .game-card { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; cursor: pointer; transition: 0.3s; }
+        .game-card:hover { background: rgba(255,255,255,0.2); transform: translateY(-5px); }
+        .game-id { font-size: 1.5em; font-weight: bold; color: #74c0fc; margin-bottom: 10px; }
+        .game-info { font-size: 0.9em; color: #b3d9ff; margin: 5px 0; }
+        .player-count { color: #51cf66; font-weight: bold; }
+        .empty-message { text-align: center; color: #b3d9ff; font-size: 1.2em; }
+        .btn-join { background: #51cf66; color: white; margin-top: 10px; width: 48%; }
+        .btn-join:hover { background: #40c057; }
+        .btn-spectate { background: #a78bfa; color: white; margin-top: 10px; margin-left: 2%; width: 48%; }
+        .btn-spectate:hover { background: #9370db; }
+        .button-row { display: flex; gap: 4%; }
+        .badge { display: inline-block; background: #ff8787; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; margin-left: 5px; }
+      </style>
+      <link rel="stylesheet" href="/themes.css">
+    </head>
+    <body>
+      <div class="container">
+        <h1>🎮 Game Lobby</h1>
+        <div class="header-buttons">
+          <a href="/" class="btn-home">← Back to Home</a>
+        </div>
+
+        <div id="gamesContainer" class="games-container"></div>
+      </div>
+
+      <script>
+        // Load and display available games
+        function loadGames() {
+          const games = ${JSON.stringify(allGames)};
+          const container = document.getElementById('gamesContainer');
+
+          if (games.length === 0) {
+            container.innerHTML = '<div class="empty-message">No games available. Create one!</div>';
+            return;
+          }
+
+          container.innerHTML = games.map(game => \`
+            <div class="game-card">
+              <div class="game-id">Game: \${game.id} \${!game.isPublic ? '<span class="badge">🔒 PRIVATE</span>' : ''}</div>
+              <div class="game-info">Created by: <strong>\${game.createdBy}</strong></div>
+              <div class="game-info">Players: <span class="player-count">\${game.playerCount}/2</span></div>
+              <div class="game-info">Status: \${game.winner ? '✅ Finished' : game.playerCount === 1 ? '⏳ Waiting' : '🎮 Playing'}</div>
+              <div class="button-row">
+                <button class="btn-join" onclick="joinGame('\${game.id}')">Join Game</button>
+                <button class="btn-spectate" onclick="spectateGame('\${game.id}')">👁️ Watch</button>
+              </div>
+            </div>
+          \`).join('');
+        }
+
+        function joinGame(gameId) {
+          window.location.href = '/game/' + gameId;
+        }
+
+        function spectateGame(gameId) {
+          window.location.href = '/game/' + gameId + '?spectate=true';
+        }
+
+        loadGames();
+        setInterval(loadGames, 5000); // Refresh every 5 seconds
+      </script>
+      <script src="/theme-loader.js"></script>
+    </body>
+    </html>
+  `);
 });
 
 // ===== REDIRECT INVALID GAME PATH =====
@@ -781,19 +1037,55 @@ app.get('/game/:id', (req, res) => {
 // ===== SOCKET =====
 io.on('connection', (socket) => {
 
-  socket.on('join', ({ gameId, username }) => {
+  socket.on('join', ({ gameId, username, password, isSpectating }) => {
     const game = games[gameId];
-    if (!game) return;
+    if (!game) {
+      socket.emit('joinError', { error: 'Game not found' });
+      return;
+    }
+
+    // Check password for private games
+    if (!game.isPublic && game.password && game.password !== password) {
+      socket.emit('joinError', { error: 'Incorrect password' });
+      return;
+    }
 
     socket.join(gameId);
 
-    if (game.players.length < 2) {
+    // Check if this is a returning player (reconnect)
+    let existingPlayer = game.players.find(p => p.name === username && p.connected === false);
+    
+    if (existingPlayer) {
+      // Reconnect existing player
+      existingPlayer.id = socket.id;
+      existingPlayer.connected = true;
+      socket.emit('player', {
+        symbol: existingPlayer.symbol,
+        name: username,
+        isHost: socket.id === game.host
+      });
+    } else if (isSpectating || game.players.length >= 2) {
+      // Join as spectator if requested or if game is full
+      game.spectators.push({
+        id: socket.id,
+        name: username,
+        connected: true
+      });
+      
+      socket.emit('spectator', {
+        name: username,
+        gameId: gameId
+      });
+    } else if (game.players.length < 2) {
+      // New player joining
       const symbol = game.players.length === 0 ? "X" : "O";
 
       const player = {
         id: socket.id,
         symbol,
-        name: username
+        name: username,
+        connected: true,
+        socketId: socket.id
       };
 
       game.players.push(player);
@@ -807,6 +1099,60 @@ io.on('connection', (socket) => {
         name: username,
         isHost: socket.id === game.host
       });
+    }
+
+    // Broadcast game state and player status to all in room
+    io.to(gameId).emit('update', {
+      ...game,
+      playerStatus: game.players.map(p => ({ name: p.name, connected: p.connected }))
+    });
+  });
+
+  // ===== HANDLE DISCONNECT =====
+  socket.on('disconnect', () => {
+    for (const [gameId, game] of Object.entries(games)) {
+      const player = game.players.find(p => p.id === socket.id);
+      if (player) {
+        player.connected = false;
+        player.id = null; // Allow reconnect with same socket later
+        io.to(gameId).emit('update', {
+          ...game,
+          playerStatus: game.players.map(p => ({ name: p.name, connected: p.connected }))
+        });
+        io.to(gameId).emit('playerDisconnected', { name: player.name });
+        return;
+      }
+
+      const spectator = game.spectators.find(s => s.id === socket.id);
+      if (spectator) {
+        game.spectators = game.spectators.filter(s => s.id !== socket.id);
+        io.to(gameId).emit('spectatorLeft', { name: spectator.name });
+        return;
+      }
+    }
+  });
+
+  // ===== KICK PLAYER =====
+  socket.on('kick', ({ gameId, playerName }) => {
+    const game = games[gameId];
+    if (!game || socket.id !== game.host) return;
+
+    const player = game.players.find(p => p.name === playerName);
+    if (!player) return;
+
+    // Notify kicked player
+    if (player.id) {
+      io.to(player.id).emit('kicked', { reason: 'Host kicked you from the game' });
+    }
+
+    // Remove player
+    game.players = game.players.filter(p => p.name !== playerName);
+
+    // If only one player left and game in progress, offer rematch
+    if (game.players.length === 1 && !game.winner) {
+      game.winner = 'draw'; // Mark as draw when player kicked mid-game
+      updateStats(game.players[0].name, 'draw');
+      io.emit('leaderboardUpdate');
     }
 
     io.to(gameId).emit('update', game);
