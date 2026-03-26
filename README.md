@@ -35,6 +35,11 @@ A real-time online multiplayer Noughts and Crosses (Tic-Tac-Toe) game with compe
 - Win and lose animations
 - Clear game states and transitions
 
+### 💬 Communication Features
+- In-game chat
+- Emoji reactions (quick + fun)
+- “GG” / quick messages buttons
+
 ---
 
 ## 🛠️ Tech Stack
