@@ -329,6 +329,92 @@
     border-radius: 15px;
     display: inline-block;
   }
+
+  .chat-area {
+    margin-top: 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 0.9em;
+  }
+
+  .chat-area h3 {
+    margin-bottom: 10px;
+    color: #74c0fc;
+  }
+
+  .chat-messages {
+    height: 220px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+
+  .chat-message {
+    margin-bottom: 6px;
+    line-height: 1.25;
+  }
+
+  .chat-message strong {
+    color: #ffd43b;
+  }
+
+  .chat-controls {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .chat-controls input {
+    flex: 1;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 8px;
+    background: rgba(255,255,255,0.1);
+    color: white;
+  }
+
+  .chat-controls button {
+    background: #4dabf7;
+    border: none;
+    color: white;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  #chatSend {
+    background: #51cf66;
+    border: 1px solid #3f9d55;
+    color: white;
+  }
+
+  #chatSend:hover {
+    background: #40c057;
+  }
+
+  .quick-buttons {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  .quick-buttons button {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.35);
+    color: white;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+
+  .quick-buttons button:hover {
+    background: rgba(255,255,255,0.25);
+  }
 </style>
 <link rel="stylesheet" href="/themes.css">
 </head>
@@ -370,6 +456,33 @@
       <tr><td colspan="3" style="text-align: center;">Loading...</td></tr>
     </tbody>
   </table>
+
+  <div class="chat-area" id="chatArea">
+    <h3>🗨️ In-Game Chat</h3>
+    <div class="chat-messages" id="chatMessages"></div>
+
+    <div class="chat-controls">
+      <input type="text" id="chatInput" placeholder="Type message..." maxlength="200" />
+      <button id="chatSend">Send</button>
+    </div>
+    <div id="chatCooldownText" style="margin-top:6px; font-size:0.8em; color:#ffd43b; height:1.2em;">&nbsp;</div>
+
+    <div class="quick-buttons">
+      <button data-text="GG">GG</button>
+      <button data-text="Well played!">Well played!</button>
+      <button data-text="Nice move!">Nice move!</button>
+      <button data-text="Good luck!">Good luck!</button>
+    </div>
+
+    <div class="quick-buttons" id="emojiButtons" style="margin-top: 6px;">
+      <button data-emoji="😄">😄</button>
+      <button data-emoji="😂">😂</button>
+      <button data-emoji="🔥">🔥</button>
+      <button data-emoji="🎉">🎉</button>
+      <button data-emoji="👍">👍</button>
+      <button data-emoji="👎">👎</button>
+    </div>
+  </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>

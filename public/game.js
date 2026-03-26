@@ -10,6 +10,16 @@ const hostControlsDiv = document.getElementById("hostControls");
 const spectatorModeDiv = document.getElementById("spectatorMode");
 const spectatorListDiv = document.getElementById("spectatorList");
 
+const chatMessagesDiv = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const chatSendBtn = document.getElementById('chatSend');
+const chatCooldownText = document.getElementById('chatCooldownText');
+const chatQuickButtons = document.querySelectorAll('.quick-buttons button[data-text]');
+const emojiButtons = document.querySelectorAll('.quick-buttons button[data-emoji]');
+
+let lastChatSentAt = 0; // rate limit timestamp in ms
+let cooldownTimer = null;
+
 const gameId = window.location.pathname.split("/").pop();
 const username = window.loggedInUser;
 
@@ -200,6 +210,133 @@ function spawnDeathEffect(element) {
     setTimeout(() => e.remove(), 1500);
   }
 }
+
+function appendChatMessage({sender, type, text, time}) {
+  const msg = document.createElement('div');
+  msg.className = 'chat-message';
+
+  const stamp = new Date(time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+  if (type === 'emoji') {
+    msg.innerHTML = `<strong>${sender}</strong>: <span style="font-size:1.2em;">${text}</span> <span style="opacity:0.7;font-size:0.75em;">${stamp}</span>`;
+    spawnEmojiReaction(text);
+  } else {
+    msg.innerHTML = `<strong>${sender}</strong>: ${text} <span style="opacity:0.7;font-size:0.75em;">${stamp}</span>`;
+  }
+
+  chatMessagesDiv.appendChild(msg);
+  chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+}
+
+function spawnEmojiReaction(emoji) {
+  const reaction = document.createElement('div');
+  reaction.className = 'emoji';
+  reaction.innerText = emoji;
+
+  const startX = window.innerWidth * 0.7 + (Math.random() - 0.5) * 120;
+  const startY = window.innerHeight * 0.3 + (Math.random() - 0.5) * 90;
+  reaction.style.left = `${startX}px`;
+  reaction.style.top = `${startY}px`;
+  reaction.style.fontSize = '2rem';
+
+  const x = (Math.random() - 0.5) * 200 + 'px';
+  const y = (-Math.random() * 200) + 'px';
+
+  reaction.style.setProperty('--x', x);
+  reaction.style.setProperty('--y', y);
+
+  document.body.appendChild(reaction);
+  setTimeout(() => reaction.remove(), 1500);
+}
+
+function setChatCooldown(seconds) {
+  if (cooldownTimer) {
+    clearInterval(cooldownTimer);
+  }
+
+  if (seconds <= 0) {
+    chatInput.disabled = false;
+    chatSendBtn.disabled = false;
+    chatCooldownText.innerText = '';
+    return;
+  }
+
+  chatInput.disabled = true;
+  chatSendBtn.disabled = true;
+
+  let remaining = seconds;
+  chatCooldownText.innerText = `⏳ Cooldown: ${remaining.toFixed(1)}s`;
+
+  cooldownTimer = setInterval(() => {
+    remaining = Math.max(0, remaining - 0.1);
+    if (remaining <= 0) {
+      clearInterval(cooldownTimer);
+      cooldownTimer = null;
+      setChatCooldown(0);
+    } else {
+      chatCooldownText.innerText = `⏳ Cooldown: ${remaining.toFixed(1)}s`;
+    }
+  }, 100);
+}
+
+function sendChatMessage(text, type = 'text') {
+  if (!text || !text.trim()) return;
+
+  const now = Date.now();
+  const rateLimitMs = 300; // milliseconds
+
+  if (now - lastChatSentAt < rateLimitMs) {
+    const cooldownMsg = document.createElement('div');
+    cooldownMsg.className = 'chat-message';
+    cooldownMsg.style.opacity = '0.8';
+    cooldownMsg.style.fontSize = '0.8em';
+    cooldownMsg.style.color = '#ffdddd';
+    cooldownMsg.innerText = '⏳ Please wait a moment before sending another message.';
+    chatMessagesDiv.appendChild(cooldownMsg);
+    chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+    return;
+  }
+
+  lastChatSentAt = now;
+
+  setChatCooldown(rateLimitMs / 1000);
+
+  socket.emit('chat', {
+    gameId,
+    sender: username || 'Anonymous',
+    type,
+    text: text.trim()
+  });
+}
+
+chatSendBtn?.addEventListener('click', () => {
+  sendChatMessage(chatInput.value, 'text');
+  chatInput.value = '';
+});
+
+chatInput?.addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    sendChatMessage(chatInput.value, 'text');
+    chatInput.value = '';
+  }
+});
+
+chatQuickButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    sendChatMessage(btn.dataset.text, 'quick');
+  });
+});
+
+emojiButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    sendChatMessage(btn.dataset.emoji, 'emoji');
+  });
+});
+
+socket.on('chatMessage', (msg) => {
+  appendChatMessage(msg);
+});
 
 // update
 socket.on('update', (gameData) => {

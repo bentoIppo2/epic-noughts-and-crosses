@@ -112,6 +112,7 @@ db.serialize(() => {
 let games = {};
 let playerTokens = {}; // Map socket ID to player token for reconnect
 let gameStartTracker = {};
+let chatCooldown = {}; // socket.id -> timestamp of last chat message
 
 // ===== CLEAN UP OLD GAMES =====
 setInterval(() => {
@@ -1108,6 +1109,38 @@ io.on('connection', (socket) => {
     });
   });
 
+  // ===== CHAT MESSAGES =====
+  socket.on('chat', ({ gameId, sender, type, text }) => {
+    const game = games[gameId];
+    if (!game) return;
+
+    const now = Date.now();
+    const prevTime = chatCooldown[socket.id] || 0;
+    const rateLimitMs = 300;
+
+    if (now - prevTime < rateLimitMs) {
+      socket.emit('chatMessage', {
+        sender: 'System',
+        type: 'text',
+        text: 'You are sending messages too quickly, please slow down.',
+        time: new Date().toISOString()
+      });
+      return;
+    }
+
+    chatCooldown[socket.id] = now;
+
+    // Ensure text is safe and concise
+    const sanitized = String(text).substring(0, 240);
+
+    io.to(gameId).emit('chatMessage', {
+      sender: sender || 'Anonymous',
+      type: type || 'text',
+      text: sanitized,
+      time: new Date().toISOString()
+    });
+  });
+
   // ===== HANDLE DISCONNECT =====
   socket.on('disconnect', () => {
     for (const [gameId, game] of Object.entries(games)) {
@@ -1115,6 +1148,7 @@ io.on('connection', (socket) => {
       if (player) {
         player.connected = false;
         player.id = null; // Allow reconnect with same socket later
+        delete chatCooldown[socket.id];
         io.to(gameId).emit('update', {
           ...game,
           playerStatus: game.players.map(p => ({ name: p.name, connected: p.connected }))
@@ -1126,6 +1160,7 @@ io.on('connection', (socket) => {
       const spectator = game.spectators.find(s => s.id === socket.id);
       if (spectator) {
         game.spectators = game.spectators.filter(s => s.id !== socket.id);
+        delete chatCooldown[socket.id];
         io.to(gameId).emit('spectatorLeft', { name: spectator.name });
         return;
       }
